@@ -1,0 +1,15 @@
+[Unit]
+Description=Robot Camera Inference Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=drone
+WorkingDirectory=/home/drone/drone_inference
+EnvironmentFile=/home/drone/drone_inference/.env
+ExecStart=/home/drone/drone_inference/.venv/bin/python main.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

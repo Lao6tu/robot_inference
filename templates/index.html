@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Robot Camera Inference Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header>
+    <span class="logo">&#x1F916; Robot Camera Inference</span>
+    <div id="status-bar">
+      <span id="cam-status"  class="badge">Camera&nbsp;—</span>
+      <span id="ws-status"   class="badge">WebSocket&nbsp;—</span>
+      <span id="last-inferred">最近推理：—</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ── Live camera feed ─────────────────────────────── -->
+    <section class="panel" id="camera-panel">
+      <div class="panel-title">Live Feed</div>
+      <div class="video-wrap">
+        <img id="mjpeg" src="/stream.mjpeg" alt="Live feed" />
+        <div id="cam-overlay" class="overlay hidden">Camera not ready</div>
+      </div>
+    </section>
+
+    <!-- ── Inference result ──────────────────────────────── -->
+    <section class="panel" id="result-panel">
+      <div class="panel-title">
+        Navigation Assessment
+        <span id="frame-badge" class="frame-badge hidden"></span>
+        <span id="last-inferred" class="last-inf">—</span>
+      </div>
+
+      <!-- Current result card -->
+      <div id="current-card" class="inf-card">
+        <div class="inf-status-row">
+          <span id="inf-cat"  class="inf-cat">—</span>
+          <span id="inf-space" class="inf-space">Free space: —</span>
+        </div>
+        <div class="inf-section">
+          <div class="inf-label">Action advice</div>
+          <div id="inf-action" class="inf-value">—</div>
+        </div>
+        <div class="inf-section">
+          <div class="inf-label">Reason</div>
+          <div id="inf-reason" class="inf-value">—</div>
+        </div>
+        <div id="inf-error" class="inf-error hidden"></div>
+      </div>
+
+      <!-- History log -->
+      <div class="hist-header">
+        <span>History</span>
+        <button id="clear-hist" onclick="clearHistory()">Clear</button>
+      </div>
+      <div id="hist-list" class="hist-list"></div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+"""
+Entry point
+===========
+Wires all components together and starts the uvicorn server.
+"""
+
+import logging
+
+import uvicorn
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import config
+from camera_manager import CameraManager
+from inference_scheduler import InferenceScheduler
+from result_manager import ResultManager
+from snapshot_worker import SnapshotWorker
+from web_app import create_app
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+def main() -> None:
+    result_manager = ResultManager()
+
+    camera_manager = CameraManager(
+        framerate=config.CAMERA_FRAMERATE,
+        output_width=config.OUTPUT_WIDTH,
+        output_height=config.OUTPUT_HEIGHT,
+    )
+
+    snapshot_worker = SnapshotWorker(
+        camera_manager=camera_manager,
+        interval_sec=config.SNAPSHOT_INTERVAL_SEC,
+        buffer_size=config.SNAPSHOT_BUFFER_SIZE,
+    )
+
+    inference_scheduler = InferenceScheduler(
+        snapshot_worker=snapshot_worker,
+        result_manager=result_manager,
+        interval_sec=config.INFERENCE_INTERVAL_SEC,
+        frames_per_request=config.INFERENCE_FRAMES,
+        base_url=config.INFERENCE_API_URL,
+        api_key=config.INFERENCE_API_KEY,
+        model=config.INFERENCE_MODEL,
+        prompt=config.INFERENCE_PROMPT,
+        timeout_sec=config.INFERENCE_TIMEOUT_SEC,
+    )
+
+    app = create_app(
+        camera_manager=camera_manager,
+        result_manager=result_manager,
+        snapshot_worker=snapshot_worker,
+        inference_scheduler=inference_scheduler,
+    )
+
+    logger.info("Starting Robot Camera Inference server on %s:%d", config.HOST, config.PORT)
+    uvicorn.run(app, host=config.HOST, port=config.PORT, reload=False)
+
+
+if __name__ == "__main__":
+    main()
