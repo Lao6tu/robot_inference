@@ -43,7 +43,7 @@ sudo apt install python3-picamera2
 ### 2 — Python environment
 
 ```bash
-cd /home/drone/drone_inference
+cd /home/drone/robot_inference
 
 # Create a venv that can see the system picamera2
 python3 -m venv .venv --system-site-packages

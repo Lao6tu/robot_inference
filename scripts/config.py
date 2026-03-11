@@ -39,4 +39,4 @@ INFERENCE_FRAMES = int(os.getenv("INFERENCE_FRAMES", "2"))   # frames per reques
 INFERENCE_TIMEOUT_SEC = int(os.getenv("INFERENCE_TIMEOUT_SEC", "30"))
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent

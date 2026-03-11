@@ -121,6 +121,15 @@ class InferenceScheduler:
         payload = {
             "model": self._model,
             "messages": [{"role": "user", "content": content}],
+            "max_tokens": 256,
+            "temperature": 0.2,
+            "top_p": 0.9,
+            "top_k": 5,
+            "presence_penalty": 1.0,
+            "response_format": {"type": "json_object"},
+            "extra_body": {
+                "chat_template_kwargs": {"enable_thinking": False},
+            },
         }
         headers = {
             "Authorization": f"Bearer {self._api_key}",

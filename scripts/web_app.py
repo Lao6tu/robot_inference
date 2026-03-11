@@ -21,15 +21,15 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-import config
-from camera_manager import CameraManager
-from inference_scheduler import InferenceScheduler
-from result_manager import ResultManager
-from snapshot_worker import SnapshotWorker
+from . import config
+from .camera_manager import CameraManager
+from .inference_scheduler import InferenceScheduler
+from .result_manager import ResultManager
+from .snapshot_worker import SnapshotWorker
 
 logger = logging.getLogger(__name__)
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def create_app(

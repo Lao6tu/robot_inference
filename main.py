@@ -11,12 +11,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import config
-from camera_manager import CameraManager
-from inference_scheduler import InferenceScheduler
-from result_manager import ResultManager
-from snapshot_worker import SnapshotWorker
-from web_app import create_app
+from scripts import config
+from scripts.camera_manager import CameraManager
+from scripts.inference_scheduler import InferenceScheduler
+from scripts.result_manager import ResultManager
+from scripts.snapshot_worker import SnapshotWorker
+from scripts.web_app import create_app
 
 logging.basicConfig(
     level=logging.INFO,
