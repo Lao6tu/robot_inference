@@ -283,5 +283,6 @@ main {
   gap: 2px;
 }
 .hist-time  { font-size: 0.65rem; color: var(--muted); }
+.hist-hazards{ color: #d6c79a; font-size: 0.72rem; }
 .hist-action{ color: var(--text); }
 .hist-reason{ color: var(--muted); font-size: 0.72rem; }

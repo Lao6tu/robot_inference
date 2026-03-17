@@ -78,7 +78,11 @@ function catClass(cat) {
 function renderResult(data) {
   /* timestamp */
   const ts = data._inferred_at ? new Date(data._inferred_at * 1000) : new Date();
-  $("last-inferred").textContent = ts.toLocaleTimeString();
+  const timeText = ts.toLocaleTimeString();
+  const headerTime = $("last-inferred-header");
+  const panelTime = $("last-inferred-panel");
+  if (headerTime) headerTime.textContent = "Recent Inference: " + timeText;
+  if (panelTime) panelTime.textContent = timeText;
 
   /* frame badge */
   if (data._frame_count !== undefined) {
@@ -91,6 +95,7 @@ function renderResult(data) {
   const errEl    = $("inf-error");
   const catEl    = $("inf-cat");
   const spaceEl  = $("inf-space");
+  const hazEl    = $("inf-hazards");
   const actionEl = $("inf-action");
   const reasonEl = $("inf-reason");
 
@@ -98,6 +103,7 @@ function renderResult(data) {
     catEl.textContent    = "ERR";
     catEl.className      = "inf-cat";
     spaceEl.textContent  = "";
+    if (hazEl) hazEl.textContent = "—";
     actionEl.textContent = "—";
     reasonEl.textContent = "—";
     errEl.textContent    = "⚠ " + escHtml(data.error);
@@ -107,12 +113,14 @@ function renderResult(data) {
     const status = data.status || {};
     const cat    = status.cat   || "—";
     const space  = status.free_space != null ? status.free_space + " cm" : "—";
+    const hazards = status.hazards || "none";
     const cls    = catClass(cat);
 
     catEl.textContent    = cat;
     catEl.className      = "inf-cat" + (cls ? " " + cls : "");
     spaceEl.textContent  = "Free space: " + space;
-    actionEl.textContent = data.action_advice || "—";
+    if (hazEl) hazEl.textContent = hazards;
+    actionEl.textContent = data.action || "—";
     reasonEl.textContent = data.reason        || "—";
   }
 
@@ -133,11 +141,13 @@ function appendHistory(data, ts) {
   row.className = "hist-row";
 
   let catText = "ERR", cls = "err", action = "", reason = "";
+  let hazards = "—";
   if (!data.error) {
     const status = data.status || {};
     catText = status.cat || "—";
     cls     = catClass(catText);
-    action  = data.action_advice || "";
+    hazards = status.hazards || "none";
+    action  = data.action || "";
     reason  = data.reason        || "";
   } else {
     action = data.error;
@@ -150,6 +160,7 @@ function appendHistory(data, ts) {
     <div class="hist-cat ${cls}">${escHtml(catText)}</div>
     <div class="hist-detail">
       <span class="hist-time">${ts.toLocaleTimeString()}${escHtml(space)}</span>
+      <span class="hist-hazards">Hazards: ${escHtml(hazards)}</span>
       <span class="hist-action">${escHtml(action)}</span>
       <span class="hist-reason">${escHtml(reason)}</span>
     </div>`;

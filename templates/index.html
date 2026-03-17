@@ -12,7 +12,7 @@
     <div id="status-bar">
       <span id="cam-status"  class="badge">Camera&nbsp;—</span>
       <span id="ws-status"   class="badge">WebSocket&nbsp;—</span>
-      <span id="last-inferred">Recent Inference: —</span>
+      <span id="last-inferred-header">Recent Inference: —</span>
     </div>
   </header>
 
@@ -32,7 +32,7 @@
       <div class="panel-title">
         Navigation Assessment
         <span id="frame-badge" class="frame-badge hidden"></span>
-        <span id="last-inferred" class="last-inf">—</span>
+        <span id="last-inferred-panel" class="last-inf">—</span>
       </div>
 
       <!-- Current result card -->
@@ -42,7 +42,11 @@
           <span id="inf-space" class="inf-space">Free space: —</span>
         </div>
         <div class="inf-section">
-          <div class="inf-label">Action advice</div>
+          <div class="inf-label">Hazards</div>
+          <div id="inf-hazards" class="inf-value">—</div>
+        </div>
+        <div class="inf-section">
+          <div class="inf-label">Action</div>
           <div id="inf-action" class="inf-value">—</div>
         </div>
         <div class="inf-section">

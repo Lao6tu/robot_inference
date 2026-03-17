@@ -133,12 +133,11 @@ class InferenceScheduler:
                 model=self._model,
                 messages=[{"role": "user", "content": content}],
                 max_tokens=256,
-                temperature=0.2,
+                temperature=0.1,
                 top_p=0.9,
                 presence_penalty=1.0,
                 response_format={"type": "json_object"},
                 extra_body={
-                    "top_k": 5,
                     "chat_template_kwargs": {"enable_thinking": False},
                 },
                 timeout=self._timeout,

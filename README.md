@@ -64,8 +64,7 @@ nano .env          # set INFERENCE_API_URL, SENSOR_WIDTH/HEIGHT if needed
 ### 4 — Run
 
 ```bash
-source .venv/bin/activate
-python main.py
+cd /home/drone/robot_inference && source .venv/bin/activate && python main.py
 ```
 
 Open `http://<rpi-ip>:8000` in a browser.
