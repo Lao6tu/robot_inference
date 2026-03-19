@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from pathlib import Path
 from typing import Optional
 
 import cv2
@@ -28,8 +29,9 @@ class LiveDetector:
         model_path: str = "yolo26n.pt",
         conf: float = 0.35,
         iou: float = 0.45,
-        infer_every_n: int = 2,
+        infer_every_n: int = 1,
         imgsz: int = 640,
+        prefer_ncnn: bool = False,
     ) -> None:
         self._conf = conf
         self._iou = iou
@@ -45,12 +47,43 @@ class LiveDetector:
 
         self._model: Optional[YOLO] = None
         self._enabled = False
+        resolved_model_path = self._resolve_model_path(model_path=model_path, prefer_ncnn=prefer_ncnn)
+        backend = "ncnn" if str(resolved_model_path).endswith("_ncnn_model") else "pytorch"
         try:
-            self._model = YOLO(model_path)
+            self._model = YOLO(resolved_model_path, task="detect")
             self._enabled = True
-            logger.info("Live detector enabled with model: %s", model_path)
+            logger.info(
+                "Live detector enabled with backend=%s model=%s",
+                backend,
+                resolved_model_path,
+            )
         except Exception as exc:
-            logger.error("Could not load YOLO model '%s': %s", model_path, exc)
+            logger.error("Could not load YOLO model '%s': %s", resolved_model_path, exc)
+
+    def _resolve_model_path(self, model_path: str, prefer_ncnn: bool) -> str:
+        """Resolve preferred model path, using NCNN export if available."""
+        if not prefer_ncnn:
+            return model_path
+
+        path = Path(model_path)
+
+        if str(path).endswith("_ncnn_model"):
+            if path.exists():
+                return str(path)
+            logger.warning("NCNN model path does not exist: %s. Falling back to provided path.", path)
+            return model_path
+
+        candidate = path.with_name(f"{path.stem}_ncnn_model")
+        if candidate.exists():
+            logger.info("Using NCNN model at: %s", candidate)
+            return str(candidate)
+
+        logger.warning(
+            "NCNN preferred but export not found at %s. Falling back to %s",
+            candidate,
+            model_path,
+        )
+        return model_path
 
     @property
     def enabled(self) -> bool:

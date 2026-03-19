@@ -32,8 +32,8 @@ class SnapshotWorker:
         camera_manager,
         interval_sec: float = 1.0,
         buffer_size: int = 10,
-        resize_width: int = 960,
-        resize_height: int = 720,
+        resize_width: int = 512,
+        resize_height: int = 512,
     ) -> None:
         self._cam = camera_manager
         self._interval = interval_sec

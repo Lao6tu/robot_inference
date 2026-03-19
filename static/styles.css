@@ -207,6 +207,31 @@ main {
   line-height: 1.5;
 }
 
+#inf-hazards {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+#inf-action {
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+#inf-hazards.go,
+#inf-action.go {
+  color: #4caf50;
+}
+
+#inf-hazards.caution,
+#inf-action.caution {
+  color: #ffa726;
+}
+
+#inf-hazards.nogo,
+#inf-action.nogo {
+  color: #ef5350;
+}
+
 .inf-error {
   font-size: 0.82rem;
   color: var(--red);

@@ -104,7 +104,9 @@ function renderResult(data) {
     catEl.className      = "inf-cat";
     spaceEl.textContent  = "";
     if (hazEl) hazEl.textContent = "—";
+    if (hazEl) hazEl.className = "inf-value";
     actionEl.textContent = "—";
+    actionEl.className   = "inf-value";
     reasonEl.textContent = "—";
     errEl.textContent    = "⚠ " + escHtml(data.error);
     errEl.classList.remove("hidden");
@@ -120,7 +122,9 @@ function renderResult(data) {
     catEl.className      = "inf-cat" + (cls ? " " + cls : "");
     spaceEl.textContent  = "Free space: " + space;
     if (hazEl) hazEl.textContent = hazards;
+    if (hazEl) hazEl.className = "inf-value" + (cls ? " " + cls : "");
     actionEl.textContent = data.action || "—";
+    actionEl.className   = "inf-value" + (cls ? " " + cls : "");
     reasonEl.textContent = data.reason        || "—";
   }
 

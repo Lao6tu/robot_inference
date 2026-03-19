@@ -63,6 +63,7 @@ def main() -> None:
             iou=config.YOLO_IOU,
             infer_every_n=config.YOLO_INFER_EVERY_N,
             imgsz=config.YOLO_IMGSZ,
+            prefer_ncnn=config.YOLO_PREFER_NCNN,
         )
 
     app = create_app(

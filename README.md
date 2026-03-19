@@ -75,6 +75,26 @@ Open `http://<rpi-ip>:8000` in a browser.
 - YOLO runs in a background thread and only emits box coordinates.
 - Browser draws boxes in a canvas overlay via `/ws/detections`.
 
+### Use NCNN for live YOLO (faster on CPU)
+
+1. Export the model once:
+
+```bash
+cd /home/drone/robot_inference
+source .venv/bin/activate
+python -c 'from ultralytics import YOLO; YOLO("yolo26n.pt").export(format="ncnn")'
+```
+
+2. Keep these settings in `.env`:
+
+```bash
+LIVE_DETECTION_ENABLED=1
+YOLO_MODEL_PATH=yolo26n.pt
+YOLO_PREFER_NCNN=1
+```
+
+With `YOLO_PREFER_NCNN=1`, the app automatically uses `yolo26n_ncnn_model` if it exists and falls back to `yolo26n.pt` if it does not.
+
 ## Install as systemd service
 
 ```bash
@@ -126,6 +146,7 @@ On error, include an `"error"` key for the UI to show a warning.
 | `MJPEG_FPS` | `30` | MJPEG stream rate |
 | `LIVE_DETECTION_ENABLED` | `1` | Enable YOLO live detection worker |
 | `YOLO_MODEL_PATH` | `yolo26n.pt` | YOLO model path |
+| `YOLO_PREFER_NCNN` | `1` | Prefer `<YOLO_MODEL_PATH stem>_ncnn_model` if it exists; fallback to `YOLO_MODEL_PATH` |
 | `YOLO_CONF` | `0.35` | Detection confidence threshold |
 | `YOLO_IOU` | `0.45` | NMS IoU threshold |
 | `YOLO_INFER_EVERY_N` | `2` | Run YOLO once per N frames (lower load with higher N) |
