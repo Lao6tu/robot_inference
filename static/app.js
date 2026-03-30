@@ -125,7 +125,7 @@ function renderResult(data) {
     if (hazEl) hazEl.className = "inf-value" + (cls ? " " + cls : "");
     actionEl.textContent = data.action || "—";
     actionEl.className   = "inf-value" + (cls ? " " + cls : "");
-    reasonEl.textContent = data.reason        || "—";
+    reasonEl.textContent = data.analysis || "—";
   }
 
   /* ── Append to history ── */
@@ -152,7 +152,7 @@ function appendHistory(data, ts) {
     cls     = catClass(catText);
     hazards = status.hazards || "none";
     action  = data.action || "";
-    reason  = data.reason        || "";
+    reason  = data.analysis || "";
   } else {
     action = data.error;
   }
