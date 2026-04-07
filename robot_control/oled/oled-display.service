@@ -1,0 +1,18 @@
+[Unit]
+Description=Robot OLED WiFi Status Display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=drone
+WorkingDirectory=/home/drone/robot_control
+ExecStart=/home/drone/robot_control/.venv/bin/python /home/drone/robot_control/script/oled.py
+Restart=always
+RestartSec=5
+
+# Ensure virtualenv and standard binaries are available.
+Environment="PATH=/home/drone/robot_control/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,51 @@
+{
+  "limits": {
+    "max_duty": 4095,
+    "min_servo_angle": 0,
+    "max_servo_angle": 180,
+    "servo_channel_count": 8
+  },
+  "servo": {
+    "init_channel_0": 70,
+    "init_channel_1": 170
+  },
+  "ultrasonic": {
+    "trigger_pin": 27,
+    "echo_pin": 22
+  },
+  "avoidance": {
+    "enabled": true,
+    "stop_cm": 20,
+    "caution_cm": 30,
+    "reverse_speed": 1000,
+    "turn_speed": 1200,
+    "reverse_time_sec": 0.6,
+    "turn_time_sec": 0.8,
+    "confirm_pause_sec": 0.3,
+    "hard_stop_pause_sec": 0.1,
+    "caution_stop_pause_sec": 0.05
+  },
+  "manual_control": {
+    "drive_speed": 1000,
+    "turn_speed": 1200
+  },
+  "vlm": {
+    "status_url": "http://127.0.0.1:8000/api/status",
+    "base_speed": 1000,
+    "slow_speed": 750,
+    "turn_speed": 1200,
+    "steer_phase_sec": 0.8,
+    "steer_cooldown_sec": 1.2,
+    "control_interval_sec": 0.1,
+    "poll_interval_sec": 0.4,
+    "api_timeout_sec": 1.5,
+    "vlm_stale_timeout_sec": 1.2,
+    "stop_confirm_count": 2,
+    "recovery_stop_sec": 1.0,
+    "recovery_probe_turn_sec": 0.5,
+    "recovery_pause_sec": 2.0,
+    "recovery_reverse_sec": 1.5,
+    "recovery_turn_sec": 0.6,
+    "recovery_cooldown_sec": 2.0
+  }
+}
