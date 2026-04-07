@@ -17,6 +17,7 @@ from scripts.inference_scheduler import InferenceScheduler
 from scripts.live_detector import LiveDetector
 from scripts.result_manager import ResultManager
 from scripts.snapshot_worker import SnapshotWorker
+from scripts.drive_mode_manager import DriveModeManager
 from scripts.web_app import create_app
 
 logging.basicConfig(
@@ -72,6 +73,9 @@ def main() -> None:
         snapshot_worker=snapshot_worker,
         inference_scheduler=inference_scheduler,
         live_detector=live_detector,
+        drive_mode_manager=DriveModeManager(
+            status_url=f"http://127.0.0.1:{config.PORT}/api/status"
+        ),
     )
 
     logger.info("Starting Robot Camera Inference server on %s:%d", config.HOST, config.PORT)

@@ -11,9 +11,11 @@ Browser ──► RPi5 Web UI (FastAPI)
                ├─ SnapshotWorker  ← 1 frame/s from latest_frame, resized to 512x512 → deque
                ├─ InferenceScheduler  ← every 1s, 1 frame → POST to VLM API
                ├─ LiveDetector    ← YOLO detects boxes in background thread
+               ├─ DriveModeManager ← merged robot_control manual/vlm motor control
                ├─ ResultManager   ← stores result, fans out via WebSocket
                ├─ stream.mjpeg    ← raw live MJPEG from latest_frame (no box drawing)
-               └─ ws/detections   ← latest normalized boxes for canvas overlay
+               ├─ ws/detections   ← latest normalized boxes for canvas overlay
+               └─ /drive-logs     ← interactive/vlm runtime log viewer page
 
                       ▼
              Inference API Server
@@ -30,8 +32,11 @@ Browser ──► RPi5 Web UI (FastAPI)
 | `snapshot_worker.py` | Grabs 1 frame/s, resizes to 512x512, stores in rolling `deque` |
 | `inference_scheduler.py` | Picks 1 frame every 1 s, POSTs to VLM API |
 | `live_detector.py` | Runs YOLO in background and publishes normalized detection boxes |
+| `drive_mode_manager.py` | Integrates merged `robot_control` motion logic with manual/vlm modes |
 | `result_manager.py` | Thread-safe result store + asyncio WebSocket broadcast |
-| `web_app.py` | FastAPI routes: `/`, `/stream.mjpeg`, `/api/status`, `/api/config`, `/ws/results`, `/ws/detections` |
+| `web_app.py` | FastAPI routes for dashboard, drive control APIs, and drive log page |
+| `templates/drive_logs.html` | Web page for interactive/vlm mode logs |
+| `robot_control/` | Merged motor control package used by DriveModeManager |
 | `main.py` | Wires everything, starts uvicorn |
 
 ## Setup
@@ -46,7 +51,7 @@ sudo apt install rpicam-apps
 ### 2 — Python environment
 
 ```bash
-cd /home/drone/robot_inference
+cd ~/robot_inference
 
 # Create a venv that can see the system picamera2
 python3 -m venv .venv --system-site-packages
@@ -64,10 +69,31 @@ nano .env          # set INFERENCE_API_URL, SENSOR_WIDTH/HEIGHT if needed
 ### 4 — Run
 
 ```bash
-cd /home/drone/robot_inference && source .venv/bin/activate && python main.py
+cd ~/robot_inference
+source .venv/bin/activate
+python main.py
 ```
 
 Open `http://<rpi-ip>:8000` in a browser.
+
+## Drive Control
+
+`robot_control` is now part of this project at `robot_inference/robot_control`.
+The dashboard control panel can switch between:
+
+- `Manual Mode` (button/keyboard control)
+- `VLM Auto Cruise` (uses latest inference action from `/api/status`)
+
+Drive-related endpoints:
+
+- `GET /api/drive/status`
+- `POST /api/drive/mode`
+- `POST /api/drive/manual`
+- `GET /api/drive/logs`
+- `GET /drive-logs`
+
+If `robot_control` is moved again, set environment variable `ROBOT_CONTROL_DIR`
+to the absolute folder path containing `config/cli_config.json`.
 
 ### Live detection overlay behavior
 
@@ -80,7 +106,7 @@ Open `http://<rpi-ip>:8000` in a browser.
 1. Export the model once:
 
 ```bash
-cd /home/drone/robot_inference
+cd ~/robot_inference
 source .venv/bin/activate
 python -c 'from ultralytics import YOLO; YOLO("yolo26n.pt").export(format="ncnn")'
 ```
@@ -151,6 +177,7 @@ On error, include an `"error"` key for the UI to show a warning.
 | `YOLO_IOU` | `0.45` | NMS IoU threshold |
 | `YOLO_INFER_EVERY_N` | `2` | Run YOLO once per N frames (lower load with higher N) |
 | `YOLO_IMGSZ` | `640` | YOLO inference image size |
+| `ROBOT_CONTROL_DIR` | *(auto-detect)* | Optional absolute path to merged `robot_control` folder (must contain `config/cli_config.json`) |
 | `HOST` / `PORT` | `0.0.0.0` / `8000` | Server bind |
 
 Note: snapshots are currently resized to `960x720` in code before being sent for inference.

@@ -13,6 +13,16 @@ const detCanvas  = $("det-overlay");
 const detCtx     = detCanvas ? detCanvas.getContext("2d") : null;
 let latestBoxes  = [];
 
+/* drive mode state */
+const modeInteractiveBtn = $("mode-interactive");
+const modeVlmBtn = $("mode-vlm");
+const driveStatusEl = $("drive-status");
+const manualPad = $("manual-pad");
+const driveBtns = Array.from(document.querySelectorAll(".drive-btn[data-action]"));
+let driveMode = "interactive";
+let driveAvailable = false;
+let activeHoldAction = null;
+
 /* ── WebSocket ─────────────────────────────────────────────────────────────── */
 function connectWS() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
@@ -63,6 +73,166 @@ function connectDetectionsWS() {
   ws.onerror = () => {
     ws.close();
   };
+}
+
+/* ── Drive mode APIs ──────────────────────────────────────────────────────── */
+async function postJson(url, payload) {
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const data = await resp.json();
+      if (data && data.detail) detail = String(data.detail);
+    } catch {}
+    throw new Error(detail);
+  }
+  return resp.json();
+}
+
+async function refreshDriveStatus() {
+  try {
+    const resp = await fetch("/api/drive/status");
+    const data = await resp.json();
+    renderDriveStatus(data);
+  } catch (err) {
+    renderDriveStatus({
+      available: false,
+      mode: "interactive",
+      error: String(err),
+      vlm_running: false,
+    });
+  }
+}
+
+function renderDriveStatus(data) {
+  driveMode = data.mode || "interactive";
+  driveAvailable = Boolean(data.available);
+  const vlmRunning = Boolean(data.vlm_running);
+
+  modeInteractiveBtn.classList.toggle("active", driveMode === "interactive");
+  modeVlmBtn.classList.toggle("active", driveMode === "vlm");
+
+  modeInteractiveBtn.disabled = !driveAvailable;
+  modeVlmBtn.disabled = !driveAvailable;
+
+  const interactiveEnabled = driveAvailable && driveMode === "interactive";
+  manualPad.classList.toggle("disabled", !interactiveEnabled);
+  for (const btn of driveBtns) {
+    btn.disabled = !interactiveEnabled;
+  }
+
+  if (!driveAvailable) {
+    driveStatusEl.textContent = `Drive unavailable: ${data.error || "unknown error"}`;
+    return;
+  }
+
+  if (driveMode === "vlm") {
+    driveStatusEl.textContent = vlmRunning
+      ? "Drive mode: VLM auto cruise running"
+      : "Drive mode: VLM selected, waiting for controller";
+    return;
+  }
+
+  driveStatusEl.textContent = "Drive mode: interactive manual control";
+}
+
+async function switchDriveMode(mode) {
+  try {
+    const data = await postJson("/api/drive/mode", { mode });
+    activeHoldAction = null;
+    renderDriveStatus(data);
+  } catch (err) {
+    driveStatusEl.textContent = `Mode switch failed: ${String(err)}`;
+  }
+}
+
+async function sendManualAction(action) {
+  if (!driveAvailable || driveMode !== "interactive") return;
+  try {
+    const data = await postJson("/api/drive/manual", { action });
+    renderDriveStatus(data);
+  } catch (err) {
+    driveStatusEl.textContent = `Manual control failed: ${String(err)}`;
+  }
+}
+
+function normalizeKeyAction(key) {
+  const k = key.toLowerCase();
+  if (k === "w" || key === "ArrowUp") return "forward";
+  if (k === "s" || key === "ArrowDown") return "back";
+  if (k === "a" || key === "ArrowLeft") return "left";
+  if (k === "d" || key === "ArrowRight") return "right";
+  if (key === " ") return "stop";
+  return null;
+}
+
+function bindDriveControls() {
+  modeInteractiveBtn.addEventListener("click", () => switchDriveMode("interactive"));
+  modeVlmBtn.addEventListener("click", () => switchDriveMode("vlm"));
+
+  for (const btn of driveBtns) {
+    const action = btn.dataset.action;
+    if (!action) continue;
+
+    btn.addEventListener("pointerdown", () => {
+      activeHoldAction = action;
+      sendManualAction(action);
+    });
+
+    const release = () => {
+      if (activeHoldAction !== null) {
+        activeHoldAction = null;
+        sendManualAction("stop");
+      }
+    };
+
+    btn.addEventListener("pointerup", release);
+    btn.addEventListener("pointercancel", release);
+    btn.addEventListener("pointerleave", release);
+  }
+
+  window.addEventListener("keydown", (ev) => {
+    const action = normalizeKeyAction(ev.key);
+    if (!action) return;
+
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(ev.key)) {
+      ev.preventDefault();
+    }
+
+    if (driveMode !== "interactive" || !driveAvailable) return;
+    if (ev.repeat && action !== "stop") return;
+
+    if (action === "stop") {
+      activeHoldAction = null;
+      sendManualAction("stop");
+      return;
+    }
+
+    activeHoldAction = action;
+    sendManualAction(action);
+  });
+
+  window.addEventListener("keyup", (ev) => {
+    const action = normalizeKeyAction(ev.key);
+    if (!action || action === "stop") return;
+    if (driveMode !== "interactive" || !driveAvailable) return;
+
+    if (activeHoldAction === action) {
+      activeHoldAction = null;
+      sendManualAction("stop");
+    }
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && driveMode === "interactive") {
+      activeHoldAction = null;
+      sendManualAction("stop");
+    }
+  });
 }
 
 /* ── Render result ─────────────────────────────────────────────────────────── */
@@ -292,5 +462,8 @@ fetch("/api/config")
 
 connectWS();
 connectDetectionsWS();
+bindDriveControls();
+refreshDriveStatus();
 pollStatus();
 setInterval(pollStatus, 5000);
+setInterval(refreshDriveStatus, 2500);

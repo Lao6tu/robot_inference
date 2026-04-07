@@ -14,9 +14,10 @@ import logging
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -27,10 +28,19 @@ from .inference_scheduler import InferenceScheduler
 from .live_detector import LiveDetector
 from .result_manager import ResultManager
 from .snapshot_worker import SnapshotWorker
+from .drive_mode_manager import DriveModeManager
 
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+class DriveModeRequest(BaseModel):
+    mode: Literal["interactive", "vlm"]
+
+
+class ManualDriveRequest(BaseModel):
+    action: Literal["forward", "back", "left", "right", "stop"]
 
 
 def create_app(
@@ -39,6 +49,7 @@ def create_app(
     snapshot_worker: Optional[SnapshotWorker] = None,
     inference_scheduler: Optional[InferenceScheduler] = None,
     live_detector: Optional[LiveDetector] = None,
+    drive_mode_manager: Optional[DriveModeManager] = None,
 ) -> FastAPI:
 
     @asynccontextmanager
@@ -54,6 +65,11 @@ def create_app(
             snapshot_worker.start()
         if inference_scheduler:
             inference_scheduler.start()
+        if drive_mode_manager:
+            try:
+                drive_mode_manager.switch_mode("interactive")
+            except Exception as exc:
+                logger.warning("Drive manager startup failed: %s", exc)
 
         yield
 
@@ -64,6 +80,8 @@ def create_app(
             snapshot_worker.stop()
         if live_detector:
             live_detector.stop()
+        if drive_mode_manager:
+            drive_mode_manager.shutdown()
         camera_manager.stop()
 
     app = FastAPI(title="Robot Camera Inference Dashboard", lifespan=lifespan)
@@ -75,6 +93,10 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request) -> HTMLResponse:
         return templates.TemplateResponse("index.html", {"request": request})
+
+    @app.get("/drive-logs", response_class=HTMLResponse)
+    def drive_logs_page(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse("drive_logs.html", {"request": request})
 
     # ── MJPEG stream ──────────────────────────────────────────────────────────
 
@@ -121,6 +143,56 @@ def create_app(
                 "camera_ready": camera_manager.get_frame() is not None,
                 "latest_result": result_manager.get_latest(),
                 "timestamp": time.time(),
+            }
+        )
+
+    @app.get("/api/drive/status")
+    def api_drive_status() -> JSONResponse:
+        if not drive_mode_manager:
+            return JSONResponse(
+                {
+                    "available": False,
+                    "mode": "interactive",
+                    "vlm_running": False,
+                    "last_manual_action": "stop",
+                    "last_duties": [0, 0, 0, 0],
+                    "error": "Drive manager is not configured",
+                }
+            )
+        return JSONResponse(drive_mode_manager.status())
+
+    @app.post("/api/drive/mode")
+    def api_drive_mode(payload: DriveModeRequest) -> JSONResponse:
+        if not drive_mode_manager:
+            raise HTTPException(status_code=503, detail="Drive manager is not configured")
+        try:
+            status = drive_mode_manager.switch_mode(payload.mode)
+            return JSONResponse(status)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.post("/api/drive/manual")
+    def api_drive_manual(payload: ManualDriveRequest) -> JSONResponse:
+        if not drive_mode_manager:
+            raise HTTPException(status_code=503, detail="Drive manager is not configured")
+        try:
+            status = drive_mode_manager.apply_manual_action(payload.action)
+            return JSONResponse(status)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    @app.get("/api/drive/logs")
+    def api_drive_logs(limit: int = Query(200, ge=1, le=1000)) -> JSONResponse:
+        if not drive_mode_manager:
+            return JSONResponse({"available": False, "items": []})
+        return JSONResponse(
+            {
+                "available": True,
+                "items": drive_mode_manager.get_logs(limit=limit),
             }
         )
 

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drive Mode Logs</title>
+  <link rel="stylesheet" href="/static/styles.css?v=20260408g" />
+  <style>
+    body { overflow: auto; }
+    .logs-wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .logs-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .logs-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+    }
+    .logs-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .logs-actions a {
+      color: var(--accent);
+      text-decoration: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 10px;
+      background: #0f121a;
+    }
+    .logs-actions a:hover { border-color: var(--accent); }
+    #logs-status {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .logs-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .logs-list {
+      max-height: calc(100dvh - 180px);
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .log-row {
+      display: grid;
+      grid-template-columns: 140px 80px 100px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+    .log-row:last-child { border-bottom: none; }
+    .log-time { color: var(--muted); }
+    .log-level { font-weight: 700; }
+    .log-level.INFO { color: #8ab4ff; }
+    .log-level.WARNING { color: #ffcc66; }
+    .log-level.ERROR { color: #ff7a7a; }
+    .log-mode {
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #d9e3ff;
+      letter-spacing: 0.04em;
+    }
+    .log-msg { color: var(--text); white-space: pre-wrap; word-break: break-word; }
+    .log-empty {
+      padding: 16px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    @media (max-width: 900px) {
+      .log-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">Drive Mode Logs</span>
+    <div id="status-bar">
+      <span id="logs-status">Loading...</span>
+    </div>
+  </header>
+
+  <div class="logs-wrap">
+    <div class="logs-head">
+      <div class="logs-title">Interactive / VLM Runtime Logs</div>
+      <div class="logs-actions">
+        <a href="/">Back to Dashboard</a>
+      </div>
+    </div>
+
+    <div class="logs-panel">
+      <div id="logs-list" class="logs-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const logsList = document.getElementById("logs-list");
+    const logsStatus = document.getElementById("logs-status");
+
+    function formatTs(ts) {
+      const dt = new Date((Number(ts) || 0) * 1000);
+      return dt.toLocaleTimeString();
+    }
+
+    function formatFields(fields) {
+      if (!fields || typeof fields !== "object") return "";
+      const keys = Object.keys(fields);
+      if (!keys.length) return "";
+      return keys.map((k) => `${k}=${JSON.stringify(fields[k])}`).join(" | ");
+    }
+
+    function renderLogs(items) {
+      if (!Array.isArray(items) || items.length === 0) {
+        logsList.innerHTML = '<div class="log-empty">No drive logs yet.</div>';
+        return;
+      }
+
+      const html = items
+        .slice()
+        .reverse()
+        .map((row) => {
+          const level = String(row.level || "INFO").toUpperCase();
+          const msg = row.message || "";
+          const fields = formatFields(row.fields);
+          const full = fields ? `${msg}\n${fields}` : msg;
+          return `
+            <div class="log-row">
+              <div class="log-time">${formatTs(row.ts)}</div>
+              <div class="log-level ${level}">${level}</div>
+              <div class="log-mode">${row.mode || "-"}</div>
+              <div class="log-msg">${full}</div>
+            </div>`;
+        })
+        .join("");
+
+      logsList.innerHTML = html;
+    }
+
+    async function refreshLogs() {
+      try {
+        const resp = await fetch("/api/drive/logs?limit=400");
+        const data = await resp.json();
+        if (!data.available) {
+          logsStatus.textContent = "Drive manager unavailable";
+          renderLogs([]);
+          return;
+        }
+        const items = Array.isArray(data.items) ? data.items : [];
+        logsStatus.textContent = `Updated: ${new Date().toLocaleTimeString()} · ${items.length} entries`;
+        renderLogs(items);
+      } catch (err) {
+        logsStatus.textContent = `Load failed: ${String(err)}`;
+      }
+    }
+
+    refreshLogs();
+    setInterval(refreshLogs, 1000);
+  </script>
+</body>
+</html>
