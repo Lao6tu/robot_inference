@@ -60,6 +60,7 @@ ActionDecisionEngine = None
 MotionPolicy = None
 VLMAction = None
 VLMActionSource = None
+Servo = None
 
 try:
     from script.Motor import PWM  # type: ignore
@@ -75,6 +76,11 @@ try:
 except Exception as exc:
     HARDWARE_AVAILABLE = False
     HARDWARE_IMPORT_ERROR = str(exc)
+
+try:
+    from script.servo import Servo  # type: ignore
+except Exception:
+    Servo = None
 
 try:
     from gpiozero import DistanceSensor
@@ -98,6 +104,7 @@ class DriveModeManager:
 
         self._vlm_thread: threading.Thread | None = None
         self._vlm_stop_event: threading.Event | None = None
+        self._last_servo_angles: tuple[int, int] | None = None
 
         self._distance_sensor = None
 
@@ -112,6 +119,8 @@ class DriveModeManager:
             robot_control_dir=str(ROBOT_CONTROL_DIR),
             cli_config_path=str(CLI_CONFIG_PATH),
         )
+
+        self._initialize_camera_servo_angles()
 
         if not HARDWARE_AVAILABLE:
             logger.error("Drive control disabled: %s", self._error)
@@ -142,6 +151,47 @@ class DriveModeManager:
                     message="Distance sensor init failed",
                     error=str(exc),
                 )
+
+    def _clamp_servo_angle(self, value: int) -> int:
+        limits_cfg = self._config.get("limits", {})
+        min_angle = int(limits_cfg.get("min_servo_angle", 0))
+        max_angle = int(limits_cfg.get("max_servo_angle", 180))
+        return max(min_angle, min(max_angle, value))
+
+    def _initialize_camera_servo_angles(self) -> None:
+        if Servo is None:
+            self._append_log(
+                level="WARNING",
+                mode=self._mode,
+                message="Servo module unavailable, skip startup servo init",
+            )
+            return
+
+        try:
+            servo_cfg = self._config.get("servo", {})
+            ch0 = self._clamp_servo_angle(int(servo_cfg.get("init_channel_0", 90)))
+            ch1 = self._clamp_servo_angle(int(servo_cfg.get("init_channel_1", 90)))
+
+            servo = Servo()
+            servo.setServoPwm("0", ch0)
+            servo.setServoPwm("1", ch1)
+
+            self._last_servo_angles = (ch0, ch1)
+            self._append_log(
+                level="INFO",
+                mode=self._mode,
+                message="Startup camera servos initialized",
+                channel_0=ch0,
+                channel_1=ch1,
+            )
+        except Exception as exc:
+            self._append_log(
+                level="WARNING",
+                mode=self._mode,
+                message="Startup camera servo init failed",
+                error=str(exc),
+            )
+            logger.warning("Startup camera servo init failed: %s", exc)
 
     def _append_log(
         self,
@@ -449,6 +499,7 @@ class DriveModeManager:
             "vlm_running": bool(self._vlm_thread and self._vlm_thread.is_alive()),
             "last_manual_action": self._last_manual_action,
             "last_duties": list(self._last_duties),
+            "last_servo_angles": list(self._last_servo_angles) if self._last_servo_angles else None,
             "error": self._error,
             "log_count": len(self._logs),
         }
